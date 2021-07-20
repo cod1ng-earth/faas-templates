@@ -4,7 +4,7 @@ ARG BUILDPLATFORM
 FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/openfaas/classic-watchdog:0.1.5 as watchdog
 
 # start with the official Composer image and name it
-FROM --platform=${TARGETPLATFORM:-linux/amd64} composer:1.7 AS composer
+FROM --platform=${TARGETPLATFORM:-linux/amd64} composer:2 AS composer
 
 # continue with the official PHP image
 FROM --platform=${TARGETPLATFORM:-linux/amd64} php:8.0-alpine
@@ -23,17 +23,19 @@ RUN apk add --no-cache git
 
 # create non-root user
 RUN addgroup -S app && adduser -S -g app app && \
-    mkdir -p /home/app
+    mkdir -p /home/app/function 
+
+WORKDIR /home/app/function
+COPY ./function/php-extension.sh ./
+# Install php extensions
+RUN [[ -f php-extension.sh ]] && sh ./php-extension.sh 
 
 # Import function
 WORKDIR /home/app
 COPY index.php ./
 COPY ./function ./function
 WORKDIR /home/app/function
-
-# Install php extensions
-RUN [[ -f php-extension.sh ]] && sh ./php-extension.sh && \
-    chown -R app /home/app
+RUN chown -R app /home/app
 
 # Entry
 USER app
